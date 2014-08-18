@@ -23,27 +23,26 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
 
-app.get('/', 
+app.get('/',
+function(req, res) {
+  res.render('login');
+});
+
+app.get('/create',
 function(req, res) {
   res.render('index');
 });
 
-app.get('/create', 
-function(req, res) {
-  res.render('index');
-});
-
-app.get('/links', 
+app.get('/links',
 function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.send(200, links.models);
   });
 });
 
-app.post('/links', 
+app.post('/links',
 function(req, res) {
   var uri = req.body.url;
-
   if (!util.isValidUrl(uri)) {
     console.log('Not a valid url: ', uri);
     return res.send(404);
@@ -78,7 +77,47 @@ function(req, res) {
 // Write your authentication routes here
 /************************************************************/
 
+// setup listeners on /login
+  // check if your a valid user
+    // if a valid user -> take you to the site
+    // if not, send you to signup
+      // save you in the db.
 
+app.post('/login', function(req, res) {
+  var username = req.body.username;
+  var pw = req.body.password;
+  new User({username: username, password: pw}).fetch().then(function(found) {
+    if (found) {
+      console.log('found, sending to login!');
+      res.redirect('/create');
+    } else {
+      console.log('not found, sending to signup');
+      res.render('/signup');
+    }
+  })
+});
+
+//page where they can register
+app.get('/signup', function(req, res) {
+  res.render('signup');
+});
+
+//creating an account
+app.post('/signup', function(req, res) {
+  var username = req.body.username;
+  var pw = req.body.password;
+
+  // create entry in database
+  new User({username: username, password: pw})
+    .save().then(function() {
+      console.log('user saved');
+    });
+  console.log(Users.toJSON());
+  // after saving, redirect to index
+  res.render('index');
+  // if failed, report error
+
+})
 
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail
