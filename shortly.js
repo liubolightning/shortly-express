@@ -88,11 +88,11 @@ app.post('/login', function(req, res) {
   var pw = req.body.password;
   new User({username: username, password: pw}).fetch().then(function(found) {
     if (found) {
-      console.log('found, sending to login!');
-      res.redirect('/create');
+      console.log('found, sending to index!');
+      res.render('index');
     } else {
-      console.log('not found, sending to signup');
-      res.render('/signup');
+      console.log('not found, keeping at login');
+      res.render('login');
     }
   })
 });
@@ -111,13 +111,11 @@ app.post('/signup', function(req, res) {
   new User({username: username, password: pw})
     .save().then(function() {
       console.log('user saved');
+      res.render('index');
     });
-  console.log(Users.toJSON());
   // after saving, redirect to index
-  res.render('index');
   // if failed, report error
-
-})
+});
 
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail
