@@ -10,13 +10,40 @@ var User = require('./app/models/user');
 var Links = require('./app/collections/links');
 var Link = require('./app/models/link');
 var Click = require('./app/models/click');
+var passport = require('passport');
+var GitHubStrategy = require('passport-github').Strategy;
+
+passport.serializeUser(function(user, done){
+  done(null, user);
+});
+
+passport.deserializeUser(function(obj, done){
+  done(null, obj);
+});
+
+passport.use(new GitHubStrategy({
+    clientID: process.env.ID,
+    clientSecret: process.env.SECRET,
+    callbackURL: "http://127.0.0.1:4568/auth/github/callback"
+  },
+  function(accessToken, refreshToken, profile, done){
+    process.nextTick(function(){
+      return done(null, profile);
+    });
+  }
+));
 
 var app = express();
+/*****************************************************************
+ * ROUTES
+ *****************************************************************
+ */
 
 app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
 app.use(partials());
 // Parse JSON (uniform resource locators)
+app.use(express.cookieParser());
 app.use(bodyParser.json());
 // Parse forms (signup/login)
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -89,53 +116,53 @@ app.post('/links', function (req, res) {
       // save you in the db.
 
 //login page
-app.post('/login', function(req, res) {
-  var username = req.body.username;
-  var pw = req.body.password;
-  new User({username: username}).fetch().then(function(model) {
-    if (!model) {
-      console.error('OH NO!');
-      return;
-    }
-    var salt = model.get('salt');
-    pw = bcrypt.hashSync(pw, salt);
-    new User({username: username, password: pw}).fetch().then(function(found) {
-      if (found) {
-        req.session.regenerate(function() {
-          req.session.user = username;
-          res.render('index');
-        });
-      } else {
-        res.render('login');
-      }
-    });
-  });
-});
+// app.post('/login', function(req, res) {
+//   var username = req.body.username;
+//   var pw = req.body.password;
+//   new User({username: username}).fetch().then(function(model) {
+//     if (!model) {
+//       console.error('OH NO!');
+//       return;
+//     }
+//     var salt = model.get('salt');
+//     pw = bcrypt.hashSync(pw, salt);
+//     new User({username: username, password: pw}).fetch().then(function(found) {
+//       if (found) {
+//         req.session.regenerate(function() {
+//           req.session.user = username;
+//           res.render('index');
+//         });
+//       } else {
+//         res.render('login');
+//       }
+//     });
+//   });
+// });
 
-//page where they can register
-app.get('/signup', function(req, res) {
-  res.render('signup');
-});
+// //page where they can register
+// app.get('/signup', function(req, res) {
+//   res.render('signup');
+// });
 
-//creating an account
-app.post('/signup', function(req, res) {
-  var username = req.body.username;
-  var pw = req.body.password;
+// //creating an account
+// app.post('/signup', function(req, res) {
+//   var username = req.body.username;
+//   var pw = req.body.password;
 
-  // create entry in database
-  new User({username: username, password: pw})
-    .save().then(function() {
-      console.log('user saved');
-      // after saving, redirect to index
-      res.render('index');
-    });
-});
+//   // create entry in database
+//   new User({username: username, password: pw})
+//     .save().then(function() {
+//       console.log('user saved');
+//       // after saving, redirect to index
+//       res.render('index');
+//     });
+// });
 
-app.get('/logout', function(req, res) {
-  req.session.destroy(function() {
-    res.redirect('/');
-  });
-});
+// app.get('/logout', function(req, res) {
+//   req.session.destroy(function() {
+//     res.redirect('/');
+//   });
+// });
 
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail
