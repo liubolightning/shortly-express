@@ -11,6 +11,7 @@ var Links = require('./app/collections/links');
 var Link = require('./app/models/link');
 var Click = require('./app/models/click');
 var passport = require('passport');
+var cookieParser = require('cookie-parser');
 var GitHubStrategy = require('passport-github').Strategy;
 
 passport.serializeUser(function(user, done){
@@ -43,31 +44,50 @@ app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
 app.use(partials());
 // Parse JSON (uniform resource locators)
-app.use(express.cookieParser());
+app.use(cookieParser());
 app.use(bodyParser.json());
 // Parse forms (signup/login)
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(session({secret: "bob the builder"}));
 app.use(express.static(__dirname + '/public'));
 
-var restrict = function(req, res, next) {
-  if (req.session.user) {
-    next();
-  } else {
-    // req.session.error('Unauthorized Access');
-    res.redirect('/login');
+var ensureAuthenticated = function(req, res, next) {
+  if (req.isAuthenticated()) {
+    return next();
   }
+  res.redirect('/login');
 };
 
-app.get('/', function (req, res) {
-  res.render('login');
+app.get('/', ensureAuthenticated, function (req, res) {
+  res.render('index', {user: req.user});
 });
 
-app.get('/create', restrict, function (req, res) {
+app.get('/login', function(req, res){
+  res.render('login', {user: req.user});
+});
+
+app.get('/auth/github',
+  passport.authenticate('github'),
+  function(req, res){
+    console.log('Sent to GitHub for authentication');
+  });
+
+app.get('/auth/github/callback',
+  passport.authenticate('github', {
+    successRedirect: '/',
+    failureRedirect: '/login'
+  }));
+
+app.get('/logout', function(req, res){
+  req.logout();
+  req.redirect('/');
+});
+
+app.get('/create', ensureAuthenticated, function (req, res) {
   res.render('index');
 });
 
-app.get('/links', restrict, function (req, res) {
+app.get('/links', ensureAuthenticated, function (req, res) {
   Links.reset().fetch().then(function(links) {
     res.send(200, links.models);
   });
