@@ -3,7 +3,7 @@ var util = require('./lib/utility');
 var partials = require('express-partials');
 var session = require('express-session');
 var bodyParser = require('body-parser');
-
+var bcrypt = require('bcrypt-nodejs');
 var db = require('./app/config');
 var Users = require('./app/collections/users');
 var User = require('./app/models/user');
@@ -20,14 +20,14 @@ app.use(partials());
 app.use(bodyParser.json());
 // Parse forms (signup/login)
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(session());
+app.use(session({secret: "bob the builder"}));
 app.use(express.static(__dirname + '/public'));
 
 var restrict = function(req, res, next) {
   if (req.session.user) {
     next();
   } else {
-    req.session.error('Unauthorized Access');
+    // req.session.error('Unauthorized Access');
     res.redirect('/login');
   }
 };
@@ -40,7 +40,7 @@ app.get('/create', restrict, function (req, res) {
   res.render('index');
 });
 
-app.get('/links', function (req, res) {
+app.get('/links', restrict, function (req, res) {
   Links.reset().fetch().then(function(links) {
     res.send(200, links.models);
   });
@@ -88,18 +88,28 @@ app.post('/links', function (req, res) {
     // if not, send you to signup
       // save you in the db.
 
+//login page
 app.post('/login', function(req, res) {
   var username = req.body.username;
   var pw = req.body.password;
-  new User({username: username, password: pw}).fetch().then(function(found) {
-    if (found) {
-      checkUser = true;
-      res.render('index');
-    } else {
-      console.log('not found, keeping at login');
-      res.render('login');
+  new User({username: username}).fetch().then(function(model) {
+    if (!model) {
+      console.error('OH NO!');
+      return;
     }
-  })
+    var salt = model.get('salt');
+    pw = bcrypt.hashSync(pw, salt);
+    new User({username: username, password: pw}).fetch().then(function(found) {
+      if (found) {
+        req.session.regenerate(function() {
+          req.session.user = username;
+          res.render('index');
+        });
+      } else {
+        res.render('login');
+      }
+    });
+  });
 });
 
 //page where they can register
@@ -116,10 +126,15 @@ app.post('/signup', function(req, res) {
   new User({username: username, password: pw})
     .save().then(function() {
       console.log('user saved');
+      // after saving, redirect to index
       res.render('index');
     });
-  // after saving, redirect to index
-  // if failed, report error
+});
+
+app.get('/logout', function(req, res) {
+  req.session.destroy(function() {
+    res.redirect('/');
+  });
 });
 
 /************************************************************/
