@@ -25,10 +25,11 @@ passport.deserializeUser(function(obj, done){
 passport.use(new GitHubStrategy({
     clientID: process.env.ID,
     clientSecret: process.env.SECRET,
-    callbackURL: "http://127.0.0.1:4568/auth/github/callback"
+    callbackURL: "http://127.0.0.1:3000/auth/github/callback"
   },
   function(accessToken, refreshToken, profile, done){
     process.nextTick(function(){
+      console.log(profile._json.login);
       return done(null, profile);
     });
   }
@@ -44,14 +45,17 @@ app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
 app.use(partials());
 // Parse JSON (uniform resource locators)
-app.use(cookieParser());
 app.use(bodyParser.json());
 // Parse forms (signup/login)
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(session({secret: "bob the builder"}));
+app.use(cookieParser());
+app.use(session({secret: "bob the builder", resave: true, saveUninitialized: true}));
+app.use(passport.initialize());
+app.use(passport.session());
 app.use(express.static(__dirname + '/public'));
 
 var ensureAuthenticated = function(req, res, next) {
+  console.log('ensure: ', req.isAuthenticated());
   if (req.isAuthenticated()) {
     return next();
   }
@@ -68,23 +72,23 @@ app.get('/login', function(req, res){
 
 app.get('/auth/github',
   passport.authenticate('github'),
-  function(req, res){
-    console.log('Sent to GitHub for authentication');
-  });
+  function(req, res){});
 
 app.get('/auth/github/callback',
   passport.authenticate('github', {
-    successRedirect: '/',
     failureRedirect: '/login'
-  }));
+  }),
+  function(req, res){
+    res.render('index');
+  });
 
 app.get('/logout', function(req, res){
   req.logout();
-  req.redirect('/');
+  res.redirect('/login');
 });
 
 app.get('/create', ensureAuthenticated, function (req, res) {
-  res.render('index');
+  res.redirect('/');
 });
 
 app.get('/links', ensureAuthenticated, function (req, res) {
@@ -212,5 +216,5 @@ app.get('/*', function(req, res) {
   });
 });
 
-console.log('Shortly is listening on 4568');
-app.listen(4568);
+console.log('Shortly is listening on 3000');
+app.listen(3000);

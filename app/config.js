@@ -49,11 +49,19 @@ db.knex.schema.hasTable('users').then(function (exists) {
   if (!exists) {
     db.knex.schema.createTable('users', function (user) {
       user.string('username', 255).primary();
-      user.string('password', 255);
-      user.string('salt', 255);
     }).then(function (table) {
       console.log('Created Table', table);
     });
+  }
+});
+
+db.knex.schema.hasTable('userLinks').then(function (exists) {
+  if (!exists) {
+    db.knex.schema.createTable('userLinks', function (userLink) {
+      userLink.increments('id').primary();
+      userLink.string('link', 255).inTable('links').references('code');
+      userLink.string('username', 255).inTable('users').references('username');
+    })
   }
 })
 
